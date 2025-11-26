@@ -1,42 +1,14 @@
+// 导入常量
+importScripts('./constant.js');
+
 let ws = null;
 let wsUrl = '';
 let clientId = '';
 let targetId = '';
 let wrongAnswerCount = 0;
-const MAX_PUNISHMENT_LEVEL = 5;
 let channelStrength = { A: 0, B: 0 };
 let softLimits = { A: 0, B: 0 };
 let isInPunishment = false;
-
-// 基于通过百分比的强度配置
-const PASS_PERCENTAGE_CONFIG = {
-    100: { threshold: 100, adjustStrength: -20, message: 'perfect' },
-    90: { threshold: 90, adjustStrength: -10, message: 'excellent' },
-    80: { threshold: 80, adjustStrength: 5, message: 'good' },
-    70: { threshold: 70, adjustStrength: 10, message: 'fair' },
-    60: { threshold: 60, adjustStrength: 20, message: 'medium' },
-    50: { threshold: 50, adjustStrength: 30, message: 'bad' },
-    40: { threshold: 40, adjustStrength: 50, message: 'poor' },
-    30: { threshold: 30, adjustStrength: 100, message: 'failed' },
-    20: { threshold: 20, adjustStrength: 150, message: 'failed' },
-    10: { threshold: 10, adjustStrength: 200, message: 'failed' }
-};
-
-// 在文件开头添加
-const PUNISHMENT_CONFIGS = [
-    { strength: 20, duration: 3, wave: "1" },    // 级别 1: 3秒
-    { strength: 35, duration: 5, wave: "1" },    // 级别 2: 5秒
-    { strength: 50, duration: 8, wave: "2" },    // 级别 3: 8秒
-    { strength: 65, duration: 10, wave: "2" },   // 级别 4: 10秒
-    { strength: 80, duration: 15, wave: "3" }    // 级别 5: 15秒
-];
-
-// 在文件开头添加
-const waveData = {
-    "1": `["0A0A0A0A00000000","0A0A0A0A0A0A0A0A","0A0A0A0A14141414","0A0A0A0A1E1E1E1E","0A0A0A0A28282828","0A0A0A0A32323232","0A0A0A0A3C3C3C3C","0A0A0A0A46464646","0A0A0A0A50505050","0A0A0A0A5A5A5A5A","0A0A0A0A64646464"]`,
-    "2": `["0A0A0A0A00000000","0D0D0D0D0F0F0F0F","101010101E1E1E1E","1313131332323232","1616161641414141","1A1A1A1A50505050","1D1D1D1D64646464","202020205A5A5A5A","2323232350505050","262626264B4B4B4B","2A2A2A2A41414141"]`,
-    "3": `["4A4A4A4A64646464","4545454564646464","4040404064646464","3B3B3B3B64646464","3636363664646464","3232323264646464","2D2D2D2D64646464","2828282864646464","2323232364646464","1E1E1E1E64646464","1A1A1A1A64646464"]`
-};
 
 // 在文件开头添加波形设置的存储
 let channelWaves = {
@@ -392,7 +364,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             setTimeout(() => {
                 const waveMsg = {
                     type: "clientMsg",
-                    message: `${channel}:${waveData[wave]}`,
+                    message: `${channel}:${WAVE_DATA[wave]}`,
                     time: 60,
                     channel: channel
                 };
@@ -416,7 +388,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             // 使用当前保存的波形发送数据
             const waveDataA = {
                 type: "clientMsg",
-                message: `A:${waveData[channelWaves.A]}`,
+                message: `A:${WAVE_DATA[channelWaves.A]}`,
                 time: 60,
                 channel: "A"
             };
@@ -424,7 +396,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
             const waveDataB = {
                 type: "clientMsg",
-                message: `B:${waveData[channelWaves.B]}`,
+                message: `B:${WAVE_DATA[channelWaves.B]}`,
                 time: 60,
                 channel: "B"
             };
@@ -459,7 +431,6 @@ function adjustStrength(amount) {
 
 // 跟踪上次fetch时间
 let lastFetchTime = 0;
-const FETCH_INTERVAL = 5000;  // 5秒间隔
 
 // 修改监听器
 chrome.webRequest.onCompleted.addListener(

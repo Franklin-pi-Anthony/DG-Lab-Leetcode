@@ -1,0 +1,107 @@
+// ============================================
+// 常量定义文件
+// ============================================
+
+// ============================================
+// Content Script 相关常量
+// ============================================
+
+// 强度增长相关
+const STRENGTH_INCREASE_INTERVAL = 30000;  // 每30秒增加一次强度
+const STRENGTH_INCREASE_AMOUNT = 2;        // 每次增加2点强度
+const UPDATE_THROTTLE = 500; // 500ms内只更新一次
+
+// 惩罚消息
+const PUNISHMENT_MESSAGES = [
+    "哼哼～这点惩罚可不够呢～想要更多吗？",
+    "啊～又做错了呢，该好好惩罚一下了～",
+    "诶嘿～这就是错误的代价哦～",
+    "呜呜～怎么又错了，要加倍惩罚才行呢～",
+    "笨笨的～这样下去会被玩坏的哦～",
+    "嘻嘻～这么喜欢被惩罚吗？",
+    "啊啦啦～看来还需要更多管教呢～",
+    "不乖的孩子就要接受惩罚哦～",
+    "真是个小笨蛋呢，这么简单都能错～",
+    "呐呐～这样的惩罚还受得了吗？",
+    "哎呀～又要惩罚你了呢～",
+    "这么喜欢犯错的话，人家就不客气了哦～"
+];
+
+// 奖励消息
+const REWARD_MESSAGES = [
+    "真棒呢～这次就稍微奖励一下吧～",
+    "啊～太厉害了呢～",
+    "诶嘿～做得好棒，要给奖励哦～",
+    "呜呜～好厉害，让人家好感动～",
+    "真是个天才呢～这题都能做对～",
+    "嘻嘻～乖孩子就要给糖吃哦～",
+    "啊啦啦～看来进步了呢～",
+    "好孩子值得奖励呢～",
+    "真是太聪明了，这么快就做对了～",
+    "呐呐～这样的奖励喜欢吗？",
+    "做得不错呢～让人家好开心～",
+    "真是个优秀的孩子呢～"
+];
+
+// 强度提升消息
+const STRENGTH_INCREASE_MESSAGES = [
+    "哼哼～强度要上升了哦～",
+    "啊啦～变得更强了呢～还能继续吗？",
+    "还不够呢～让人家继续加强吧～",
+    "这样的强度还不够呢～再增加一点～",
+    "乖巧的孩子要接受更多惩罚呢～",
+    "感受到了吗？人家在慢慢加重哦～",
+    "这点程度应该还可以继续吧？",
+    "嘻嘻～让我们再增加一点点～",
+    "呐呐～强度又要提升了呢～",
+    "人家温柔地增加强度中～",
+    "时间越久越舒服对吧～",
+    "让人家帮你调高一点呢～"
+];
+
+// 消息历史记录
+const MESSAGE_HISTORY = {
+    punishment: [],
+    reward: [],
+    increase: []
+};
+
+// ============================================
+// Background Service Worker 相关常量
+// ============================================
+
+// 惩罚等级相关
+const MAX_PUNISHMENT_LEVEL = 5;
+
+// 根据通过百分比的强度配置
+const PASS_PERCENTAGE_CONFIG = {
+    100: { threshold: 100, adjustStrength: -20, message: 'perfect' },
+    90: { threshold: 90, adjustStrength: -10, message: 'excellent' },
+    80: { threshold: 80, adjustStrength: 5, message: 'good' },
+    70: { threshold: 70, adjustStrength: 10, message: 'fair' },
+    60: { threshold: 60, adjustStrength: 20, message: 'medium' },
+    50: { threshold: 50, adjustStrength: 30, message: 'bad' },
+    40: { threshold: 40, adjustStrength: 50, message: 'poor' },
+    30: { threshold: 30, adjustStrength: 100, message: 'failed' },
+    20: { threshold: 20, adjustStrength: 150, message: 'failed' },
+    10: { threshold: 10, adjustStrength: 200, message: 'failed' }
+};
+
+// 惩罚配置表
+const PUNISHMENT_CONFIGS = [
+    { strength: 20, duration: 3, wave: "1" },    // 级别 1: 3秒
+    { strength: 35, duration: 5, wave: "1" },    // 级别 2: 5秒
+    { strength: 50, duration: 8, wave: "2" },    // 级别 3: 8秒
+    { strength: 65, duration: 10, wave: "2" },   // 级别 4: 10秒
+    { strength: 80, duration: 15, wave: "3" }    // 级别 5: 15秒
+];
+
+// 波形数据
+const WAVE_DATA = {
+    "1": `["0A0A0A0A00000000","0A0A0A0A0A0A0A0A","0A0A0A0A14141414","0A0A0A0A1E1E1E1E","0A0A0A0A28282828","0A0A0A0A32323232","0A0A0A0A3C3C3C3C","0A0A0A0A46464646","0A0A0A0A50505050","0A0A0A0A5A5A5A5A","0A0A0A0A64646464"]`,
+    "2": `["0A0A0A0A00000000","0D0D0D0D0F0F0F0F","101010101E1E1E1E","1313131332323232","1616161641414141","1A1A1A1A50505050","1D1D1D1D64646464","202020205A5A5A5A","2323232350505050","262626264B4B4B4B","2A2A2A2A41414141"]`,
+    "3": `["4A4A4A4A64646464","4545454564646464","4040404064646464","3B3B3B3B64646464","3636363664646464","3232323264646464","2D2D2D2D64646464","2828282864646464","2323232364646464","1E1E1E1E64646464","1A1A1A1A64646464"]`
+};
+
+// WebRequest 监听相关
+const FETCH_INTERVAL = 5000;  // 5秒间隔
