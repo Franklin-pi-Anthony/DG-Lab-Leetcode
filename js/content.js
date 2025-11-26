@@ -32,35 +32,9 @@ function getRandomMessage(type) {
 function createStrengthDisplay() {
     const display = document.createElement('div');
     display.id = 'strength-display';
-    display.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: rgba(253, 242, 248, 0.95);
-        color: #abb2bf;
-        padding: 15px 20px;
-        border-radius: 15px;
-        z-index: 10000;
-        font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-        font-size: 14px;
-        box-shadow: 0 4px 15px rgba(255, 182, 193, 0.2);
-        backdrop-filter: blur(5px);
-        border: 1px solid rgba(255, 182, 193, 0.3);
-        min-width: 150px;
-        transition: all 0.3s ease;
-    `;
 
     const title = document.createElement('div');
-    title.style.cssText = `
-        font-weight: 600;
-        color: #ff6b8b;
-        margin-bottom: 10px;
-        text-align: center;
-        border-bottom: 1px solid rgba(255, 192, 203, 0.3);
-        padding-bottom: 8px;
-        font-size: 15px;
-        letter-spacing: 1px;
-    `;
+    title.id = 'strength-display-title';
     title.innerHTML = '💗 小玩具状态 💗';
 
     const channelA = createChannelDisplay('A通道', 'strength-a');
@@ -72,48 +46,25 @@ function createStrengthDisplay() {
     display.appendChild(channelB);
     display.appendChild(timer);
     document.body.appendChild(display);
-
-    // 添加悬停效果
-    display.onmouseover = () => {
-        display.style.transform = 'translateY(2px)';
-        display.style.boxShadow = '0 6px 20px rgba(255, 182, 193, 0.3)';
-    };
-    display.onmouseout = () => {
-        display.style.transform = 'translateY(0)';
-        display.style.boxShadow = '0 4px 15px rgba(255, 182, 193, 0.2)';
-    };
 }
 
 function createChannelDisplay(label, id) {
     const container = document.createElement('div');
-    container.style.cssText = `
-        margin: 8px 0;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    `;
+    container.className = 'strength-channel-container';
 
     const labelSpan = document.createElement('span');
+    labelSpan.className = 'strength-channel-label';
     // 根据通道设置不同名称
     if (label === 'A通道') {
         labelSpan.innerHTML = '🌸 A通道强度💗';
     } else {
         labelSpan.innerHTML = '🌺 B通道强度💕';
     }
-    labelSpan.style.color = '#98c379';
 
     const valueSpan = document.createElement('span');
     valueSpan.id = id;
+    valueSpan.className = 'strength-value';
     valueSpan.textContent = '0';
-    valueSpan.style.cssText = `
-        font-weight: 600;
-        color: #e06c75;
-        min-width: 30px;
-        text-align: right;
-        transition: all 0.3s ease;
-        position: relative;
-        display: inline-block;
-    `;
 
     container.appendChild(labelSpan);
     container.appendChild(valueSpan);
@@ -122,37 +73,22 @@ function createChannelDisplay(label, id) {
 
 function createTimerDisplay() {
     const container = document.createElement('div');
-    container.style.cssText = `
-        margin-top: 12px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        border-top: 1px solid rgba(255, 255, 255, 0.1);
-        padding-top: 8px;
-    `;
+    container.id = 'timer-container';
 
     const labelSpan = document.createElement('span');
-    labelSpan.innerHTML = '⏰ 已经玩耍';  // 更可爱的时间标签
-    labelSpan.style.color = '#98c379';
+    labelSpan.className = 'timer-label';
+    labelSpan.innerHTML = '⏰ 已经玩耍';
 
     const timeContainer = document.createElement('div');
-    timeContainer.style.display = 'flex';
-    timeContainer.style.alignItems = 'center';
+    timeContainer.className = 'time-display-container';
 
     const valueSpan = document.createElement('span');
     valueSpan.id = 'time-elapsed';
     valueSpan.textContent = '0';
-    valueSpan.style.cssText = `
-        font-weight: 600;
-        color: #61afef;
-        min-width: 30px;
-        text-align: right;
-        margin-right: 3px;
-    `;
 
     const unitSpan = document.createElement('span');
+    unitSpan.id = 'time-unit';
     unitSpan.textContent = '秒';
-    unitSpan.style.color = '#61afef';
 
     timeContainer.appendChild(valueSpan);
     timeContainer.appendChild(unitSpan);
@@ -254,74 +190,25 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 // 添加提示显示函数
 function showNotification(type, message) {
     const notification = document.createElement('div');
-    notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        padding: 12px 24px;
-        border-radius: 20px;
-        font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-        font-size: 14px;
-        font-weight: 500;
-        z-index: 10001;
-        animation: notification-slide-in 0.3s ease-out, notification-slide-out 0.3s ease-in 2.7s;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        opacity: 0;
-        backdrop-filter: blur(5px);
-    `;
+    notification.className = 'strength-notification';
 
-    // 根据类型设置不同的样式
+    // 根据类型设置不同的样式和前缀
     if (type === 'success') {
-        notification.style.background = 'rgba(255, 241, 242, 0.95)';
-        notification.style.border = '1px solid #fecdd3';
-        notification.style.color = '#e11d48';
+        notification.classList.add('success');
         message = `✨ ${message}`;
     } else if (type === 'error') {
-        notification.style.background = 'rgba(253, 242, 248, 0.95)';
-        notification.style.border = '1px solid #fbcfe8';
-        notification.style.color = '#be185d';
+        notification.classList.add('error');
         message = `💕 ${message}`;
     } else if (type === 'info') {
-        notification.style.background = 'rgba(243, 244, 246, 0.95)';
-        notification.style.border = '1px solid #e5e7eb';
-        notification.style.color = '#ff6b8b';
+        notification.classList.add('info');
         message = `💝 ${message}`;
     }
 
     notification.textContent = message;
-
-    // 添加动画样式
-    const style = document.createElement('style');
-    style.textContent = `
-        @keyframes notification-slide-in {
-            from {
-                transform: translate(-50%, -100%);
-                opacity: 0;
-            }
-            to {
-                transform: translate(-50%, 0);
-                opacity: 1;
-            }
-        }
-        @keyframes notification-slide-out {
-            from {
-                transform: translate(-50%, 0);
-                opacity: 1;
-            }
-            to {
-                transform: translate(-50%, -100%);
-                opacity: 0;
-            }
-        }
-    `;
-    document.head.appendChild(style);
-
     document.body.appendChild(notification);
-    setTimeout(() => notification.style.opacity = '1', 0);
+    
+    // 触发动画
+    setTimeout(() => notification.classList.add('show'), 0);
     setTimeout(() => notification.remove(), 3000);
 }
 
@@ -356,22 +243,20 @@ function updateStrengthWithAnimation(element, newValue) {
     lastUpdate[channel].time = now;
 
     // 添加缩放动画
-    element.style.transform = 'scale(1.2)';
-    setTimeout(() => element.style.transform = 'scale(1)', 300);
+    element.classList.add('scaling');
+    setTimeout(() => element.classList.remove('scaling'), 300);
 
     // 根据数值变化设置颜色
+    element.classList.remove('increase', 'decrease');
     if (newValue > oldValue) {
-        element.style.color = '#f43f5e';
-        element.style.textShadow = '0 0 8px rgba(244, 63, 94, 0.5)';
+        element.classList.add('increase');
     } else if (newValue < oldValue) {
-        element.style.color = '#22c55e';
-        element.style.textShadow = '0 0 8px rgba(34, 197, 94, 0.5)';
+        element.classList.add('decrease');
     }
 
     // 300ms后恢复原始颜色
     setTimeout(() => {
-        element.style.color = '#e06c75';
-        element.style.textShadow = 'none';
+        element.classList.remove('increase', 'decrease');
     }, 300);
 
     // 更新数值
@@ -379,38 +264,7 @@ function updateStrengthWithAnimation(element, newValue) {
 
     // 添加波纹效果
     const ripple = document.createElement('span');
-    ripple.style.cssText = `
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        width: 20px;
-        height: 20px;
-        background: currentColor;
-        border-radius: 50%;
-        opacity: 0.5;
-        pointer-events: none;
-        animation: ripple 0.6s ease-out;
-    `;
-
-    // 添加波纹动画样式
-    if (!document.querySelector('#ripple-style')) {
-        const style = document.createElement('style');
-        style.id = 'ripple-style';
-        style.textContent = `
-            @keyframes ripple {
-                from {
-                    transform: translate(-50%, -50%) scale(0);
-                    opacity: 0.5;
-                }
-                to {
-                    transform: translate(-50%, -50%) scale(2);
-                    opacity: 0;
-                }
-            }
-        `;
-        document.head.appendChild(style);
-    }
+    ripple.className = 'strength-ripple';
 
     element.appendChild(ripple);
     setTimeout(() => ripple.remove(), 600);

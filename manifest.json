@@ -27,6 +27,7 @@
       "matches": [
         "https://*.leetcode.cn/*"
       ],
+      "css": ["css/strength-display.css"],
       "js": ["js/constant.js", "js/content.js"],
       "run_at": "document_start"
     }
