@@ -6,6 +6,21 @@ let wrongAnswerCount = 0;
 const MAX_PUNISHMENT_LEVEL = 5;
 let channelStrength = { A: 0, B: 0 };
 let softLimits = { A: 0, B: 0 };
+let isInPunishment = false;
+
+// 基于通过百分比的强度配置
+const PASS_PERCENTAGE_CONFIG = {
+    100: { threshold: 100, adjustStrength: -20, message: 'perfect' },
+    90: { threshold: 90, adjustStrength: -10, message: 'excellent' },
+    80: { threshold: 80, adjustStrength: 5, message: 'good' },
+    70: { threshold: 70, adjustStrength: 10, message: 'fair' },
+    60: { threshold: 60, adjustStrength: 20, message: 'medium' },
+    50: { threshold: 50, adjustStrength: 30, message: 'bad' },
+    40: { threshold: 40, adjustStrength: 50, message: 'poor' },
+    30: { threshold: 30, adjustStrength: 100, message: 'failed' },
+    20: { threshold: 20, adjustStrength: 150, message: 'failed' },
+    10: { threshold: 10, adjustStrength: 200, message: 'failed' }
+};
 
 // 在文件开头添加
 const PUNISHMENT_CONFIGS = [
@@ -54,7 +69,68 @@ function setStrength(strengthA, strengthB) {
     broadcastStatus();
 }
 
-// 修改 executePunishment 函数
+// 基于通过百分比调整强度的函数
+function adjustStrengthByPassPercentage(totalTestcases, totalCorrect) {
+    if (!totalTestcases || totalTestcases === 0) {
+        console.log('[Background] 无法获取测试点信息，使用默认处理');
+        return;
+    }
+
+    const passPercentage = (totalCorrect / totalTestcases) * 100;
+    console.log('[Background] 测试点通过情况:', {
+        totalTestcases,
+        totalCorrect,
+        passPercentage: passPercentage.toFixed(2) + '%'
+    });
+
+    let config = null;
+    if (passPercentage >= PASS_PERCENTAGE_CONFIG[100].threshold) {
+        config = PASS_PERCENTAGE_CONFIG[100];
+    } else if (passPercentage >= PASS_PERCENTAGE_CONFIG[90].threshold) {
+        config = PASS_PERCENTAGE_CONFIG[90];
+    } else if (passPercentage >= PASS_PERCENTAGE_CONFIG[80].threshold) {
+        config = PASS_PERCENTAGE_CONFIG[80];
+    } else if (passPercentage >= PASS_PERCENTAGE_CONFIG[70].threshold) {
+        config = PASS_PERCENTAGE_CONFIG[70];
+    } else if (passPercentage >= PASS_PERCENTAGE_CONFIG[60].threshold) {
+        config = PASS_PERCENTAGE_CONFIG[60];
+    } else if (passPercentage >= PASS_PERCENTAGE_CONFIG[50].threshold) {
+        config = PASS_PERCENTAGE_CONFIG[50];
+    } else if (passPercentage >= PASS_PERCENTAGE_CONFIG[40].threshold) {
+        config = PASS_PERCENTAGE_CONFIG[40];
+    } else if (passPercentage >= PASS_PERCENTAGE_CONFIG[30].threshold) {
+        config = PASS_PERCENTAGE_CONFIG[30];
+    } else if (passPercentage >= PASS_PERCENTAGE_CONFIG[20].threshold) {
+        config = PASS_PERCENTAGE_CONFIG[20];
+    } else {
+        config = PASS_PERCENTAGE_CONFIG[10];
+    }
+
+    console.log('[Background] 根据通过百分比调整强度:', {
+        passPercentage: passPercentage.toFixed(2) + '%',
+        adjustStrength: config.adjustStrength,
+        message: config.message
+    });
+
+    // 调整强度
+    adjustStrength(config.adjustStrength);
+
+    // 发送消息给 content 显示提示
+    const notificationType = config.adjustStrength < 0 ? 'REWARD' : 'PUNISHMENT';
+    chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
+        if (tabs[0]) {
+            chrome.tabs.sendMessage(tabs[0].id, {
+                type: 'SHOW_NOTIFICATION',
+                notificationType: notificationType,
+                passPercentage: passPercentage.toFixed(1),
+                totalTestcases: totalTestcases,
+                totalCorrect: totalCorrect
+            });
+        }
+    });
+}
+
+// 修改 executePunishment 函数（保留作为备用）
 function executePunishment() {
     isInPunishment = true;
     console.log('[Background] 开始执行惩罚');
@@ -414,28 +490,44 @@ chrome.webRequest.onCompleted.addListener(
                             return;
                         }
 
-                        // 处理最终结果
-                        if (data.run_success === false) {
-                            console.log('[Background] 检测到提交失败');
-                            executePunishment();
-                            // 发送消息给 content 显示提示
+                        // 处理最终结果 - 优先使用测试点通过百分比
+                        // 尝试从API响应中获取测试点信息
+                        const totalTestcases = data.total_testcases || data.total_correct + data.total_wrong || null;
+                        const totalCorrect = data.total_correct || null;
+                        
+                        if (totalTestcases !== null && totalCorrect !== null) {
+                            // 如果API中有测试点信息，直接使用
+                            console.log('[Background] 从API响应中获取到测试点信息');
+                            adjustStrengthByPassPercentage(totalTestcases, totalCorrect);
+                        } else {
+                            // 如果API中没有，尝试从前端页面获取
+                            console.log('[Background] API响应中没有测试点信息，尝试从前端页面获取');
                             chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
                                 if (tabs[0]) {
-                                    chrome.tabs.sendMessage(tabs[0].id, { 
-                                        type: 'SHOW_NOTIFICATION',
-                                        notificationType: 'PUNISHMENT',
-                                    });
-                                }
-                            });
-                        } else if (data.run_success === true) {
-                            console.log('[Background] 检测到提交成功');
-                            adjustStrength(-10);
-                            // 发送消息给 content 显示提示
-                            chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
-                                if (tabs[0]) {
-                                    chrome.tabs.sendMessage(tabs[0].id, { 
-                                        type: 'SHOW_NOTIFICATION',
-                                        notificationType: 'REWARD',
+                                    chrome.tabs.sendMessage(tabs[0].id, {
+                                        type: 'GET_TESTCASES_INFO',
+                                        submissionUrl: details.url
+                                    }, function(response) {
+                                        if (response && response.totalTestcases && response.totalTestcases > 0) {
+                                            console.log('[Background] 从前端页面获取到测试点信息');
+                                            adjustStrengthByPassPercentage(response.totalTestcases, response.totalCorrect || 0);
+                                        } else {
+                                            // 如果前端也没有，使用备用方案
+                                            console.log('[Background] 无法获取测试点信息，使用备用方案');
+                                            if (data.run_success === false) {
+                                                executePunishment();
+                                                chrome.tabs.sendMessage(tabs[0].id, {
+                                                    type: 'SHOW_NOTIFICATION',
+                                                    notificationType: 'PUNISHMENT',
+                                                });
+                                            } else if (data.run_success === true) {
+                                                adjustStrength(-10);
+                                                chrome.tabs.sendMessage(tabs[0].id, {
+                                                    type: 'SHOW_NOTIFICATION',
+                                                    notificationType: 'REWARD',
+                                                });
+                                            }
+                                        }
                                     });
                                 }
                             });

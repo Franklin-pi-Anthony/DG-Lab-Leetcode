@@ -157,9 +157,9 @@ function createChannelDisplay(label, id) {
     const labelSpan = document.createElement('span');
     // 根据通道设置不同名称
     if (label === 'A通道') {
-        labelSpan.innerHTML = '🌸 前边强度';  // 或 '💗 左边'
+        labelSpan.innerHTML = '🌸 A通道强度💗';
     } else {
-        labelSpan.innerHTML = '🌺 后边强度';  // 或 '💕 右边'
+        labelSpan.innerHTML = '🌺 B通道强度💕';
     }
     labelSpan.style.color = '#98c379';
 
@@ -287,6 +287,110 @@ function startStrengthIncrease() {
     }, STRENGTH_INCREASE_INTERVAL);
 }
 
+// 从前端页面获取测试点信息的函数
+function getTestcasesInfoFromPage() {
+    try {
+        // 方法1: 尝试从结果统计文本中获取（最常用）
+        // LeetCode通常会在页面上显示类似 "x / y testcases passed" 或 "x/y 通过" 的信息
+        const pageText = document.body.innerText || document.body.textContent || '';
+        
+        // 匹配多种格式：x / y testcases, x/y testcases, x / y 测试用例, x/y 通过
+        const patterns = [
+            /(\d+)\s*\/\s*(\d+)\s*(?:testcases|测试用例|测试点|通过)/i,
+            /(?:通过|passed|accepted)[\s:：]*(\d+)\s*\/\s*(\d+)/i,
+            /(\d+)\s*\/\s*(\d+)\s*(?:passed|通过)/i
+        ];
+        
+        for (const pattern of patterns) {
+            const match = pageText.match(pattern);
+            if (match) {
+                const totalCorrect = parseInt(match[1]);
+                const totalTestcases = parseInt(match[2]);
+                if (totalTestcases > 0) {
+                    console.log('[Content] 从前端页面文本中提取到测试点信息:', { totalCorrect, totalTestcases });
+                    return { totalCorrect, totalTestcases };
+                }
+            }
+        }
+        
+        // 方法2: 尝试从JSON数据中获取
+        // 查找可能包含测试点数据的script标签
+        const scripts = document.querySelectorAll('script[type="application/json"], script:not([src])');
+        for (const script of scripts) {
+            try {
+                const text = script.textContent || '';
+                // 尝试解析JSON
+                if (text.trim().startsWith('{')) {
+                    const data = JSON.parse(text);
+                    if (data.total_testcases !== undefined || data.total_correct !== undefined) {
+                        const totalTestcases = data.total_testcases || (data.total_correct + (data.total_wrong || 0));
+                        const totalCorrect = data.total_correct || 0;
+                        if (totalTestcases > 0) {
+                            console.log('[Content] 从JSON数据中提取到测试点信息:', { totalCorrect, totalTestcases });
+                            return { totalCorrect, totalTestcases };
+                        }
+                    }
+                }
+                // 尝试从文本中提取数字模式
+                const textMatch = text.match(/(?:total_testcases|total_correct|totalCorrect)[\s:=:]*(\d+)/gi);
+                if (textMatch) {
+                    const testcasesMatch = text.match(/total_testcases[\s:=:]*(\d+)/i);
+                    const correctMatch = text.match(/total_correct[\s:=:]*(\d+)/i);
+                    if (testcasesMatch && correctMatch) {
+                        const totalTestcases = parseInt(testcasesMatch[1]);
+                        const totalCorrect = parseInt(correctMatch[1]);
+                        if (totalTestcases > 0) {
+                            console.log('[Content] 从脚本文本中提取到测试点信息:', { totalCorrect, totalTestcases });
+                            return { totalCorrect, totalTestcases };
+                        }
+                    }
+                }
+            } catch (e) {
+                // 忽略解析错误
+            }
+        }
+        
+        // 方法3: 尝试从特定DOM元素中获取
+        // 查找包含测试结果的容器（LeetCode常见的类名）
+        const selectors = [
+            '[class*="result"]',
+            '[class*="submission"]',
+            '[class*="test"]',
+            '[class*="testcase"]',
+            '[class*="test-case"]',
+            '[id*="result"]',
+            '[id*="submission"]'
+        ];
+        
+        for (const selector of selectors) {
+            try {
+                const elements = document.querySelectorAll(selector);
+                for (const element of elements) {
+                    const text = element.textContent || element.innerText || '';
+                    const testMatch = text.match(/(\d+)\s*\/\s*(\d+)/);
+                    if (testMatch) {
+                        const totalCorrect = parseInt(testMatch[1]);
+                        const totalTestcases = parseInt(testMatch[2]);
+                        // 确保分母合理（通常是正整数且不超过1000）
+                        if (totalTestcases > 0 && totalTestcases <= 1000 && totalCorrect >= 0) {
+                            console.log('[Content] 从DOM元素中提取到测试点信息:', { totalCorrect, totalTestcases });
+                            return { totalCorrect, totalTestcases };
+                        }
+                    }
+                }
+            } catch (e) {
+                // 忽略错误
+            }
+        }
+        
+        console.log('[Content] 无法从前端页面获取测试点信息');
+        return null;
+    } catch (error) {
+        console.error('[Content] 获取测试点信息时出错:', error);
+        return null;
+    }
+}
+
 // 监听来自 background 的消息
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === 'STRENGTH_UPDATE') {
@@ -295,11 +399,48 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
     else if (message.type === 'SHOW_NOTIFICATION') {
         if (message.notificationType === 'PUNISHMENT') {
-            showPunishmentMessage();
+            if (message.passPercentage !== undefined) {
+                showPunishmentMessageWithPercentage(message.passPercentage, message.totalCorrect, message.totalTestcases);
+            } else {
+                showPunishmentMessage();
+            }
         } else if (message.notificationType === 'REWARD') {
-            showRewardMessage();
+            if (message.passPercentage !== undefined) {
+                showRewardMessageWithPercentage(message.passPercentage, message.totalCorrect, message.totalTestcases);
+            } else {
+                showRewardMessage();
+            }
         }
     }
+    else if (message.type === 'GET_TESTCASES_INFO') {
+        // 使用异步方式获取测试点信息
+        const tryGetInfo = (retries = 3, delay = 1000) => {
+            const result = getTestcasesInfoFromPage();
+            
+            if (result && result.totalTestcases > 0) {
+                // 成功获取到信息
+                sendResponse(result);
+                return;
+            }
+            
+            // 如果还有重试次数，等待后重试
+            if (retries > 0) {
+                setTimeout(() => {
+                    tryGetInfo(retries - 1, delay);
+                }, delay);
+            } else {
+                // 所有重试都失败，返回null
+                sendResponse(null);
+            }
+        };
+        
+        // 开始尝试获取（立即尝试一次，然后最多重试3次，每次间隔1秒）
+        tryGetInfo(3, 1000);
+        
+        return true; // 保持消息通道开放以支持异步响应
+    }
+    
+    return true;
 });
 
 // 添加提示显示函数
@@ -501,6 +642,19 @@ function showPunishmentMessage() {
 function showRewardMessage() {
     const message = getRandomMessage('reward');
     showNotification('success', message);
+}
+
+// 显示带通过百分比的消息
+function showPunishmentMessageWithPercentage(passPercentage, totalCorrect, totalTestcases) {
+    const baseMessage = getRandomMessage('punishment');
+    const percentageMessage = `通过 ${totalCorrect}/${totalTestcases} (${passPercentage}%)`;
+    showNotification('error', `${baseMessage}\n${percentageMessage}`);
+}
+
+function showRewardMessageWithPercentage(passPercentage, totalCorrect, totalTestcases) {
+    const baseMessage = getRandomMessage('reward');
+    const percentageMessage = `通过 ${totalCorrect}/${totalTestcases} (${passPercentage}%)`;
+    showNotification('success', `${baseMessage}\n${percentageMessage}`);
 }
 
 // 启动初始化
